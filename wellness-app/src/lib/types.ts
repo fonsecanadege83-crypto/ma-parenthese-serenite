@@ -60,6 +60,18 @@ export interface Letter {
   text: string;
 }
 
+export interface ThoughtRecord {
+  id: string;
+  date: string; // YYYY-MM-DD
+  situation: string;
+  automaticThought: string;
+  intensityBefore: number; // 0-10
+  evidenceFor: string;
+  evidenceAgainst: string;
+  balancedThought: string;
+  intensityAfter: number; // 0-10
+}
+
 export const DEFAULT_HABITS: Habit[] = [
   { id: 'water', label: "Boire de l'eau régulièrement", icon: '💧' },
   { id: 'move', label: 'Bouger 10 minutes', icon: '🚶' },

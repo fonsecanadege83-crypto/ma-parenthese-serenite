@@ -116,10 +116,22 @@ export function Home() {
           subtitle="Nomme ce que tu ressens, plus précisément"
         />
         <QuickLink
+          to="/tcc"
+          emoji="🧩"
+          title="Restructuration cognitive"
+          subtitle="Examine une pensée qui te pèse, étape par étape"
+        />
+        <QuickLink
           to="/bilan"
           emoji="📊"
           title="Bilan de la semaine"
           subtitle="Ta synthèse des 7 derniers jours"
+        />
+        <QuickLink
+          to="/insights"
+          emoji="🔍"
+          title="Insights"
+          subtitle="Ce que tes données racontent sur toi"
         />
       </div>
 

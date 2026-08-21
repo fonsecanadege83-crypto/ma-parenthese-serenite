@@ -13,6 +13,7 @@ import type {
   SessionLog,
   SleepEntry,
   ThemeMode,
+  ThoughtRecord,
 } from '../lib/types';
 import { DEFAULT_HABITS } from '../lib/types';
 
@@ -28,6 +29,7 @@ interface AppState {
   emotions: EmotionEntry[];
   letters: Letter[];
   favoriteAffirmations: string[];
+  thoughtRecords: ThoughtRecord[];
 }
 
 interface AppContextValue extends AppState {
@@ -49,6 +51,7 @@ interface AppContextValue extends AppState {
   addEmotionEntry: (entry: Omit<EmotionEntry, 'id' | 'date'>) => void;
   addLetter: (text: string, unlockDate: string) => void;
   toggleFavoriteAffirmation: (text: string) => void;
+  addThoughtRecord: (record: Omit<ThoughtRecord, 'id' | 'date'>) => void;
   resetAll: () => void;
 }
 
@@ -77,6 +80,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [favoriteAffirmations, setFavoriteAffirmations] = useState<string[]>(() =>
     loadValue('favoriteAffirmations', []),
   );
+  const [thoughtRecords, setThoughtRecords] = useState<ThoughtRecord[]>(() =>
+    loadValue('thoughtRecords', []),
+  );
 
   useEffect(() => saveValue('profile', profile), [profile]);
   useEffect(() => saveValue('moods', moods), [moods]);
@@ -88,6 +94,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => saveValue('emotions', emotions), [emotions]);
   useEffect(() => saveValue('letters', letters), [letters]);
   useEffect(() => saveValue('favoriteAffirmations', favoriteAffirmations), [favoriteAffirmations]);
+  useEffect(() => saveValue('thoughtRecords', thoughtRecords), [thoughtRecords]);
   useEffect(() => {
     saveValue('theme', theme);
     applyTheme(theme);
@@ -128,6 +135,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     emotions,
     letters,
     favoriteAffirmations,
+    thoughtRecords,
     isOnboarded: profile !== null,
     todayMood,
     streak,
@@ -203,6 +211,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         prev.includes(text) ? prev.filter((t) => t !== text) : [...prev, text],
       );
     },
+    addThoughtRecord: (record) => {
+      const t = todayKey();
+      setThoughtRecords((prev) => [...prev, { id: crypto.randomUUID(), date: t, ...record }]);
+    },
     resetAll: () => {
       setProfile(null);
       setMoods([]);
@@ -214,6 +226,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setEmotions([]);
       setLetters([]);
       setFavoriteAffirmations([]);
+      setThoughtRecords([]);
     },
   };
 
