@@ -86,6 +86,12 @@ export function Home() {
           subtitle="Choisis une durée et laisse-toi porter par le silence"
         />
         <QuickLink
+          to="/visualisations"
+          emoji="🏖️"
+          title="Visualisations guidées"
+          subtitle="Une évasion mentale racontée à voix haute"
+        />
+        <QuickLink
           to="/journal"
           emoji="📔"
           title="Journal de gratitude"

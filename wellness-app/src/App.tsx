@@ -13,6 +13,7 @@ import { Resources } from './pages/Resources';
 import { Sos } from './pages/Sos';
 import { Stretch } from './pages/Stretch';
 import { Weekly } from './pages/Weekly';
+import { Visualize } from './pages/Visualize';
 
 function AppShell() {
   const { isOnboarded } = useApp();
@@ -32,6 +33,7 @@ function AppShell() {
         <Route path="/sos" element={<Sos />} />
         <Route path="/etirements" element={<Stretch />} />
         <Route path="/bilan" element={<Weekly />} />
+        <Route path="/visualisations" element={<Visualize />} />
         <Route path="/profil" element={<Profile />} />
       </Routes>
     </Layout>

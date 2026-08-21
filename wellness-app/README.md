@@ -8,6 +8,7 @@ Application web de bien-être mental au quotidien, construite avec React, TypeSc
 - **Accueil** — salutation du jour, suivi d'humeur, citation du jour, série (streak) et accès rapide aux activités.
 - **Respirer** — respiration guidée en carré (4-4-4-2) animée, 5 cycles.
 - **Méditer** — minuteur de méditation avec durées prédéfinies (3 à 20 min) et carillon sonore de fin (synthétisé, sans fichier audio).
+- **Visualisations guidées** — 3 méditations guidées narrées à voix haute (synthèse vocale du navigateur), avec lecture silencieuse en repli.
 - **Journal** — journal de gratitude + note libre, avec historique.
 - **Sons ambiants** — mixeur de paysages sonores (pluie, océan, vent, feu de camp), entièrement synthétisés en Web Audio, sans fichier audio.
 - **Habitudes** — suivi quotidien d'habitudes bien-être (liste par défaut + ajout personnalisé), avec série par habitude.
