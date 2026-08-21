@@ -15,7 +15,7 @@ export interface JournalEntry {
 export interface SessionLog {
   id: string;
   date: string; // YYYY-MM-DD
-  type: 'breathing' | 'meditation';
+  type: 'breathing' | 'meditation' | 'stretching';
   minutes: number;
 }
 

@@ -27,8 +27,18 @@ export function Home() {
 
   return (
     <div className="animate-fade-up px-5 pt-12">
-      <p className="text-sm text-ink-soft">Bonjour {profile?.name || ''} 👋</p>
-      <h1 className="mt-0.5 font-serif text-[26px] capitalize text-ink">{dateLabel}</h1>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm text-ink-soft">Bonjour {profile?.name || ''} 👋</p>
+          <h1 className="mt-0.5 font-serif text-[26px] capitalize text-ink">{dateLabel}</h1>
+        </div>
+        <Link
+          to="/sos"
+          className="mt-1 flex flex-shrink-0 items-center gap-1.5 rounded-full bg-clay/15 px-3.5 py-2 text-[12px] font-semibold text-clay transition-transform active:scale-95"
+        >
+          🆘 SOS
+        </Link>
+      </div>
 
       <div className="mt-5 flex items-center gap-3 overflow-x-auto pb-1">
         {MOOD_ORDER.map((m) => (
@@ -81,6 +91,12 @@ export function Home() {
           title="Journal de gratitude"
           subtitle="Note ce qui compte aujourd’hui"
         />
+        <QuickLink
+          to="/etirements"
+          emoji="🤸"
+          title="Étirements"
+          subtitle="Une courte séquence pour relâcher les tensions du corps"
+        />
       </div>
 
       <p className="mb-2 mt-6 px-1 text-[11px] font-semibold uppercase tracking-widest text-sage-dark">
@@ -104,6 +120,12 @@ export function Home() {
           emoji="💡"
           title="Ressources"
           subtitle="Des conseils courts sur le sommeil, le stress et plus"
+        />
+        <QuickLink
+          to="/bilan"
+          emoji="📊"
+          title="Bilan de la semaine"
+          subtitle="Ta synthèse des 7 derniers jours"
         />
       </div>
     </div>

@@ -10,6 +10,9 @@ import { Profile } from './pages/Profile';
 import { Sounds } from './pages/Sounds';
 import { Habits } from './pages/Habits';
 import { Resources } from './pages/Resources';
+import { Sos } from './pages/Sos';
+import { Stretch } from './pages/Stretch';
+import { Weekly } from './pages/Weekly';
 
 function AppShell() {
   const { isOnboarded } = useApp();
@@ -26,6 +29,9 @@ function AppShell() {
         <Route path="/sons" element={<Sounds />} />
         <Route path="/habitudes" element={<Habits />} />
         <Route path="/ressources" element={<Resources />} />
+        <Route path="/sos" element={<Sos />} />
+        <Route path="/etirements" element={<Stretch />} />
+        <Route path="/bilan" element={<Weekly />} />
         <Route path="/profil" element={<Profile />} />
       </Routes>
     </Layout>
