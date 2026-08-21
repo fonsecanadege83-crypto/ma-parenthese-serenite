@@ -3,6 +3,7 @@ import { loadValue, saveValue } from '../lib/storage';
 import { todayKey, computeStreak } from '../lib/date';
 import type {
   EmotionEntry,
+  Goal,
   Habit,
   HabitLog,
   JournalEntry,
@@ -30,6 +31,7 @@ interface AppState {
   letters: Letter[];
   favoriteAffirmations: string[];
   thoughtRecords: ThoughtRecord[];
+  goals: Goal[];
 }
 
 interface AppContextValue extends AppState {
@@ -52,6 +54,9 @@ interface AppContextValue extends AppState {
   addLetter: (text: string, unlockDate: string) => void;
   toggleFavoriteAffirmation: (text: string) => void;
   addThoughtRecord: (record: Omit<ThoughtRecord, 'id' | 'date'>) => void;
+  addGoal: (title: string, targetDate: string | null, milestoneLabels: string[]) => void;
+  toggleMilestone: (goalId: string, milestoneId: string) => void;
+  removeGoal: (goalId: string) => void;
   resetAll: () => void;
 }
 
@@ -83,6 +88,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [thoughtRecords, setThoughtRecords] = useState<ThoughtRecord[]>(() =>
     loadValue('thoughtRecords', []),
   );
+  const [goals, setGoals] = useState<Goal[]>(() => loadValue('goals', []));
 
   useEffect(() => saveValue('profile', profile), [profile]);
   useEffect(() => saveValue('moods', moods), [moods]);
@@ -95,6 +101,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => saveValue('letters', letters), [letters]);
   useEffect(() => saveValue('favoriteAffirmations', favoriteAffirmations), [favoriteAffirmations]);
   useEffect(() => saveValue('thoughtRecords', thoughtRecords), [thoughtRecords]);
+  useEffect(() => saveValue('goals', goals), [goals]);
   useEffect(() => {
     saveValue('theme', theme);
     applyTheme(theme);
@@ -136,6 +143,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     letters,
     favoriteAffirmations,
     thoughtRecords,
+    goals,
     isOnboarded: profile !== null,
     todayMood,
     streak,
@@ -215,6 +223,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const t = todayKey();
       setThoughtRecords((prev) => [...prev, { id: crypto.randomUUID(), date: t, ...record }]);
     },
+    addGoal: (title, targetDate, milestoneLabels) => {
+      setGoals((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          title: title.trim(),
+          createdAt: new Date().toISOString(),
+          targetDate,
+          milestones: milestoneLabels
+            .map((label) => label.trim())
+            .filter(Boolean)
+            .map((label) => ({ id: crypto.randomUUID(), label, done: false })),
+        },
+      ]);
+    },
+    toggleMilestone: (goalId, milestoneId) => {
+      setGoals((prev) =>
+        prev.map((g) =>
+          g.id !== goalId
+            ? g
+            : {
+                ...g,
+                milestones: g.milestones.map((m) =>
+                  m.id === milestoneId ? { ...m, done: !m.done } : m,
+                ),
+              },
+        ),
+      );
+    },
+    removeGoal: (goalId) => {
+      setGoals((prev) => prev.filter((g) => g.id !== goalId));
+    },
     resetAll: () => {
       setProfile(null);
       setMoods([]);
@@ -227,6 +267,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setLetters([]);
       setFavoriteAffirmations([]);
       setThoughtRecords([]);
+      setGoals([]);
     },
   };
 

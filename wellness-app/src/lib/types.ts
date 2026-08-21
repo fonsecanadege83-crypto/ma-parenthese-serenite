@@ -72,6 +72,20 @@ export interface ThoughtRecord {
   intensityAfter: number; // 0-10
 }
 
+export interface Milestone {
+  id: string;
+  label: string;
+  done: boolean;
+}
+
+export interface Goal {
+  id: string;
+  title: string;
+  createdAt: string; // ISO date
+  targetDate: string | null; // YYYY-MM-DD
+  milestones: Milestone[];
+}
+
 export const DEFAULT_HABITS: Habit[] = [
   { id: 'water', label: "Boire de l'eau régulièrement", icon: '💧' },
   { id: 'move', label: 'Bouger 10 minutes', icon: '🚶' },

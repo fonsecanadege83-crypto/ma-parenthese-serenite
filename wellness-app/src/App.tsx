@@ -20,6 +20,8 @@ import { Letter } from './pages/Letter';
 import { Affirmations } from './pages/Affirmations';
 import { CBT } from './pages/CBT';
 import { Insights } from './pages/Insights';
+import { Goals } from './pages/Goals';
+import { Search } from './pages/Search';
 
 function AppShell() {
   const { isOnboarded } = useApp();
@@ -46,6 +48,8 @@ function AppShell() {
         <Route path="/affirmations" element={<Affirmations />} />
         <Route path="/tcc" element={<CBT />} />
         <Route path="/insights" element={<Insights />} />
+        <Route path="/objectifs" element={<Goals />} />
+        <Route path="/recherche" element={<Search />} />
         <Route path="/profil" element={<Profile />} />
       </Routes>
     </Layout>

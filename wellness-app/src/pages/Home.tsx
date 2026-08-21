@@ -32,12 +32,21 @@ export function Home() {
           <p className="text-sm text-ink-soft">Bonjour {profile?.name || ''} 👋</p>
           <h1 className="mt-0.5 font-serif text-[26px] capitalize text-ink">{dateLabel}</h1>
         </div>
-        <Link
-          to="/sos"
-          className="mt-1 flex flex-shrink-0 items-center gap-1.5 rounded-full bg-clay/15 px-3.5 py-2 text-[12px] font-semibold text-clay transition-transform active:scale-95"
-        >
-          🆘 SOS
-        </Link>
+        <div className="mt-1 flex flex-shrink-0 items-center gap-2">
+          <Link
+            to="/recherche"
+            aria-label="Rechercher"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-line bg-card text-ink transition-transform active:scale-95"
+          >
+            🔍
+          </Link>
+          <Link
+            to="/sos"
+            className="flex items-center gap-1.5 rounded-full bg-clay/15 px-3.5 py-2 text-[12px] font-semibold text-clay transition-transform active:scale-95"
+          >
+            🆘 SOS
+          </Link>
+        </div>
       </div>
 
       <div className="mt-5 flex items-center gap-3 overflow-x-auto pb-1">
@@ -156,6 +165,12 @@ export function Home() {
           emoji="✉️"
           title="Lettre à moi-même"
           subtitle="Écris à la personne que tu seras plus tard"
+        />
+        <QuickLink
+          to="/objectifs"
+          emoji="🎯"
+          title="Objectifs"
+          subtitle="Ce que tu veux construire, un jalon à la fois"
         />
       </div>
 

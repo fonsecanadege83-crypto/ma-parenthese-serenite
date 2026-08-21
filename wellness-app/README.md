@@ -22,6 +22,8 @@ Application web de bien-être mental au quotidien, construite avec React, TypeSc
 - **Affirmations** — cartes d'affirmations positives à faire défiler, avec favoris et partage.
 - **Restructuration cognitive (TCC)** — fiche de pensée en 5 étapes (situation, pensée automatique, preuves pour/contre, pensée équilibrée) inspirée des outils de thérapie cognitivo-comportementale.
 - **Insights** — analyse croisée des données déjà collectées : meilleur/pire jour de la semaine, effet des habitudes, du sommeil et de l'activité sur l'humeur.
+- **Objectifs** — objectifs personnels avec jalons, date cible et progression, création libre.
+- **Recherche globale** — recherche unifiée dans le journal, les émotions notées, les fiches TCC, les lettres déverrouillées, les objectifs et les ressources, accessible depuis l'accueil.
 - **Profil** — statistiques (série, séances, minutes), historique d'humeur sur 14 jours, mode clair/sombre/système, export/import de sauvegarde (JSON), réinitialisation des données.
 - **Partage** — pensée du jour et entrées de journal partageables via le partage natif (ou copie presse-papiers en repli).
 - **Installable (PWA)** — ajoutable à l'écran d'accueil, fonctionne hors-ligne après un premier chargement.
