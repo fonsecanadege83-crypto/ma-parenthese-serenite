@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useRef, useState, type ChangeEvent } from 'react';
 import { PageHeader } from '../components/Layout';
 import { Card } from '../components/Card';
 import { useApp } from '../context/AppContext';
-import { lastNDays, formatFrShort } from '../lib/date';
+import { lastNDays, formatFrShort, todayKey } from '../lib/date';
+import { exportAll, importAll } from '../lib/storage';
 import { MOOD_META, type ThemeMode } from '../lib/types';
 
 const THEME_OPTIONS: { mode: ThemeMode; label: string; icon: string }[] = [
@@ -15,6 +16,8 @@ export function Profile() {
   const { profile, streak, totalMinutes, sessions, journal, moods, theme, setTheme, resetAll } =
     useApp();
   const [confirmReset, setConfirmReset] = useState(false);
+  const [importStatus, setImportStatus] = useState<'idle' | 'ok' | 'error'>('idle');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const days = lastNDays(14);
   const moodByDate = Object.fromEntries(moods.map((m) => [m.date, m.mood]));
@@ -29,6 +32,41 @@ export function Profile() {
       return;
     }
     resetAll();
+  }
+
+  function handleExport() {
+    const data = exportAll();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `serenite-sauvegarde-${todayKey()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleImportClick() {
+    fileInputRef.current?.click();
+  }
+
+  function handleImportFile(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(String(reader.result));
+        if (typeof data !== 'object' || data === null || Array.isArray(data)) throw new Error('invalid');
+        importAll(data);
+        setImportStatus('ok');
+        window.location.reload();
+      } catch {
+        setImportStatus('error');
+        setTimeout(() => setImportStatus('idle'), 3000);
+      }
+    };
+    reader.readAsText(file);
   }
 
   return (
@@ -102,6 +140,40 @@ export function Profile() {
               </button>
             ))}
           </div>
+        </Card>
+
+        <Card className="mt-4">
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-sage-dark">
+            Sauvegarde
+          </p>
+          <p className="mt-2 text-[13px] leading-relaxed text-ink-soft">
+            Tes données restent uniquement sur cet appareil. Exporte-les pour les garder en
+            sécurité ou les transférer vers un autre appareil.
+          </p>
+          <div className="mt-3 flex gap-2">
+            <button
+              onClick={handleExport}
+              className="flex-1 rounded-full bg-sage-dark py-3 text-sm font-medium text-white"
+            >
+              Exporter
+            </button>
+            <button
+              onClick={handleImportClick}
+              className="flex-1 rounded-full border border-line py-3 text-sm font-medium text-ink-soft"
+            >
+              Importer
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/json"
+              onChange={handleImportFile}
+              className="hidden"
+            />
+          </div>
+          {importStatus === 'error' && (
+            <p className="mt-2 text-[12px] text-clay">Fichier invalide — vérifie qu'il s'agit bien d'une sauvegarde Sérénité.</p>
+          )}
         </Card>
 
         <button

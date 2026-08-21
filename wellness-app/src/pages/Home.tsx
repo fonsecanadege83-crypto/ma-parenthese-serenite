@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { Card, sageGradient } from '../components/Card';
 import { formatFrDate, todayKey } from '../lib/date';
 import { quoteOfDay } from '../lib/quotes';
+import { shareText } from '../lib/share';
 import { MOOD_META, MOOD_ORDER, type MoodValue } from '../lib/types';
 
 export function Home() {
@@ -10,6 +12,18 @@ export function Home() {
   const today = todayKey();
   const dateLabel = formatFrDate(today);
   const quote = quoteOfDay(today);
+  const [shareNotice, setShareNotice] = useState<string | null>(null);
+
+  async function handleShareQuote() {
+    const outcome = await shareText('Sérénité', quote);
+    if (outcome === 'copied') {
+      setShareNotice('Copié dans le presse-papiers ✓');
+      setTimeout(() => setShareNotice(null), 2500);
+    } else if (outcome === 'failed') {
+      setShareNotice("Impossible de partager pour l'instant");
+      setTimeout(() => setShareNotice(null), 2500);
+    }
+  }
 
   return (
     <div className="animate-fade-up px-5 pt-12">
@@ -23,10 +37,20 @@ export function Home() {
       </div>
 
       <Card className="mt-5 text-white" style={sageGradient}>
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-white/70">
-          Pensée du jour
-        </p>
+        <div className="flex items-center justify-between">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-white/70">
+            Pensée du jour
+          </p>
+          <button
+            onClick={handleShareQuote}
+            aria-label="Partager la pensée du jour"
+            className="flex h-7 w-7 items-center justify-center rounded-full bg-white/15 text-[13px] text-white transition-colors active:bg-white/25"
+          >
+            ⤴
+          </button>
+        </div>
         <p className="mt-2 font-serif text-lg italic leading-relaxed">"{quote}"</p>
+        {shareNotice && <p className="mt-2 text-[11px] text-white/80">{shareNotice}</p>}
       </Card>
 
       <div className="mt-5 grid grid-cols-3 gap-3">

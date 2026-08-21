@@ -11,8 +11,10 @@ Application web de bien-être mental au quotidien, construite avec React, TypeSc
 - **Journal** — journal de gratitude + note libre, avec historique.
 - **Sons ambiants** — mixeur de paysages sonores (pluie, océan, vent, feu de camp), entièrement synthétisés en Web Audio, sans fichier audio.
 - **Habitudes** — suivi quotidien d'habitudes bien-être (liste par défaut + ajout personnalisé), avec série par habitude.
-- **Ressources** — conseils courts catégorisés (sommeil, stress, relations, énergie).
-- **Profil** — statistiques (série, séances, minutes), historique d'humeur sur 14 jours, mode clair/sombre/système, réinitialisation des données.
+- **Ressources** — conseils courts catégorisés (sommeil, stress, relations, énergie), avec recherche plein texte.
+- **Profil** — statistiques (série, séances, minutes), historique d'humeur sur 14 jours, mode clair/sombre/système, export/import de sauvegarde (JSON), réinitialisation des données.
+- **Partage** — pensée du jour et entrées de journal partageables via le partage natif (ou copie presse-papiers en repli).
+- **Installable (PWA)** — ajoutable à l'écran d'accueil, fonctionne hors-ligne après un premier chargement.
 
 ## Développement
 
@@ -28,5 +30,5 @@ npm run lint       # oxlint
 - React 19 + React Router 7
 - TypeScript
 - Tailwind CSS v4 (via `@tailwindcss/postcss`)
-- Vite 8
-- Persistance : `localStorage` (namespace `serenite:`)
+- Vite 8 + `vite-plugin-pwa` (service worker, manifest)
+- Persistance : `localStorage` (namespace `serenite:`), exportable/importable en JSON
