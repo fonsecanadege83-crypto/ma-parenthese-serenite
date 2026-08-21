@@ -1,62 +1,28 @@
 /**
  * CinéScènes IA — transforme une photo en scène vidéo cinématographique.
  *
- * Backend de génération : fal.ai (queue.fal.run), modèles Kling image-to-video.
- * Stockage : R2 (photos + vidéos), KV (état des jobs + index de galerie).
+ * 100% gratuit : le "tournage" (travelling/zoom façon Ken Burns, étalonnage
+ * couleur, grain, vignette, format cinéma) est calculé et enregistré
+ * directement dans le navigateur de l'utilisateur (Canvas + MediaRecorder).
+ * Aucune API IA payante, aucune clé requise.
  *
- * Bindings requis (voir wrangler.toml) :
- *   - MEDIA    : bucket R2
- *   - JOBS_KV  : namespace KV
- *   - FAL_KEY  : secret (wrangler secret put FAL_KEY)
+ * Le Worker ne fait que servir la page et, en option, sauvegarder la vidéo
+ * finale dans R2 pour l'afficher dans la galerie publique.
+ *
+ * Binding requis (voir wrangler.toml) :
+ *   - MEDIA : bucket R2
  */
 
-const MODELS = {
-  standard: { envKey: "FAL_MODEL_STANDARD", label: "Standard", fallback: "fal-ai/kling-video/v1.6/standard/image-to-video" },
-  pro: { envKey: "FAL_MODEL_PRO", label: "Pro", fallback: "fal-ai/kling-video/v1.6/pro/image-to-video" },
-};
-
 const STYLES = {
-  drone: {
-    label: "Panoramique Drone",
-    emoji: "🚁",
-    desc: "Envolée aérienne ample, sensation d'échelle épique",
-    prompt: "Sweeping aerial drone camera movement slowly rising and panning, epic cinematic scale, wide dynamic range, subtle motion parallax, film grain, professional color grading",
-  },
-  closeup: {
-    label: "Gros Plan Émotion",
-    emoji: "🎭",
-    desc: "Lent travelling avant, profondeur de champ cinéma",
-    prompt: "Slow emotional push-in camera movement, shallow depth of field, soft cinematic bokeh, subtle natural movement in hair and fabric, intimate mood, 35mm film look",
-  },
-  golden: {
-    label: "Heure Dorée",
-    emoji: "🌅",
-    desc: "Lumière chaude, travelling doux, ambiance chaleureuse",
-    prompt: "Warm golden hour lighting, gentle dolly camera movement, soft lens flare, glowing rim light, dreamy warm color grade, cinematic atmosphere",
-  },
-  noir: {
-    label: "Noir & Mystère",
-    emoji: "🕯️",
-    desc: "Ombres dramatiques, ambiance film noir",
-    prompt: "Dramatic film noir lighting with deep shadows, slow mysterious camera pan, high contrast black and white cinematic tones, subtle fog, suspenseful atmosphere",
-  },
-  dream: {
-    label: "Rêve Éthéré",
-    emoji: "✨",
-    desc: "Mouvement flottant, lumière douce, particules en suspension",
-    prompt: "Ethereal dreamlike slow motion, floating particles of light drifting through frame, soft diffused glow, gentle camera drift, otherworldly serene mood",
-  },
-  action: {
-    label: "Action Dynamique",
-    emoji: "⚡",
-    desc: "Caméra vive, énergie et intensité",
-    prompt: "Dynamic energetic camera movement with a subtle dramatic push, heightened contrast, punchy cinematic color grade, sense of tension and momentum",
-  },
+  drone: { label: "Panoramique Drone", emoji: "🚁", desc: "Envolée large, sensation d'échelle épique" },
+  closeup: { label: "Gros Plan Émotion", emoji: "🎭", desc: "Lent travelling avant, ambiance intime" },
+  golden: { label: "Heure Dorée", emoji: "🌅", desc: "Lumière chaude, travelling doux" },
+  noir: { label: "Noir & Mystère", emoji: "🕯️", desc: "Ombres dramatiques, noir et blanc contrasté" },
+  dream: { label: "Rêve Éthéré", emoji: "✨", desc: "Mouvement flottant, particules de lumière" },
+  action: { label: "Action Dynamique", emoji: "⚡", desc: "Caméra vive, énergie et intensité" },
 };
 
-const MAX_UPLOAD_BYTES = 12 * 1024 * 1024;
-const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
-const GALLERY_KEY = "gallery:index";
+const GALLERY_PREFIX = "gallery/";
 const GALLERY_LIMIT = 60;
 
 export default {
@@ -68,17 +34,11 @@ export default {
       if (pathname === "/" && request.method === "GET") {
         return html(PAGE);
       }
-      if (pathname === "/api/upload" && request.method === "POST") {
-        return await handleUpload(request, env);
-      }
       if (pathname.startsWith("/api/media/") && request.method === "GET") {
         return await handleMedia(pathname, env);
       }
-      if (pathname === "/api/generate" && request.method === "POST") {
-        return await handleGenerate(request, env, url);
-      }
-      if (pathname.startsWith("/api/status/") && request.method === "GET") {
-        return await handleStatus(pathname, env);
+      if (pathname === "/api/gallery-save" && request.method === "POST") {
+        return await handleGallerySave(request, env);
       }
       if (pathname === "/api/gallery" && request.method === "GET") {
         return await handleGallery(env);
@@ -92,30 +52,6 @@ export default {
 
 // ---------- Routes ----------
 
-async function handleUpload(request, env) {
-  const form = await request.formData();
-  const file = form.get("photo");
-  if (!file || typeof file === "string") {
-    return json({ error: "Aucune photo reçue." }, 400);
-  }
-  if (!ALLOWED_TYPES.has(file.type)) {
-    return json({ error: "Format non supporté. Utilisez JPEG, PNG ou WebP." }, 400);
-  }
-  if (file.size > MAX_UPLOAD_BYTES) {
-    return json({ error: "Photo trop volumineuse (12 Mo max)." }, 400);
-  }
-
-  const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
-  const id = crypto.randomUUID();
-  const key = `uploads/${id}.${ext}`;
-
-  await env.MEDIA.put(key, file.stream(), {
-    httpMetadata: { contentType: file.type },
-  });
-
-  return json({ photoKey: key, previewUrl: `/api/media/${key}` });
-}
-
 async function handleMedia(pathname, env) {
   const key = decodeURIComponent(pathname.replace("/api/media/", ""));
   const obj = await env.MEDIA.get(key);
@@ -127,167 +63,53 @@ async function handleMedia(pathname, env) {
   return new Response(obj.body, { headers });
 }
 
-async function handleGenerate(request, env, url) {
-  if (!env.FAL_KEY) {
-    return json({ error: "FAL_KEY n'est pas configuré côté serveur." }, 500);
+async function handleGallerySave(request, env) {
+  const form = await request.formData();
+  const video = form.get("video");
+  const thumb = form.get("thumb");
+  const styleLabel = String(form.get("styleLabel") || "Scène").slice(0, 60);
+
+  if (!video || typeof video === "string") {
+    return json({ error: "Vidéo manquante." }, 400);
   }
 
-  const body = await request.json().catch(() => null);
-  if (!body || !body.photoKey) {
-    return json({ error: "Requête invalide." }, 400);
-  }
-
-  const style = STYLES[body.styleId];
-  if (!style) {
-    return json({ error: "Style inconnu." }, 400);
-  }
-
-  const modelChoice = MODELS[body.model] ? body.model : "standard";
-  const modelId = env[MODELS[modelChoice].envKey] || MODELS[modelChoice].fallback;
-
-  const duration = body.duration === "10" ? "10" : "5";
-
-  const photoObj = await env.MEDIA.head(body.photoKey);
-  if (!photoObj) {
-    return json({ error: "Photo introuvable, veuillez la re-uploader." }, 404);
-  }
-
-  const customPrompt = (body.customPrompt || "").trim().slice(0, 300);
-  const prompt = [style.prompt, customPrompt].filter(Boolean).join(". ");
-  const imageUrl = `${url.origin}/api/media/${body.photoKey}`;
-
-  const submitRes = await fetch(`https://queue.fal.run/${modelId}`, {
-    method: "POST",
-    headers: {
-      Authorization: `Key ${env.FAL_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ prompt, image_url: imageUrl, duration }),
+  const id = crypto.randomUUID();
+  await env.MEDIA.put(`${GALLERY_PREFIX}${id}.webm`, video.stream(), {
+    httpMetadata: { contentType: "video/webm" },
+    customMetadata: { styleLabel },
   });
-
-  if (!submitRes.ok) {
-    const errText = await submitRes.text();
-    return json({ error: `Échec de la génération (${submitRes.status}) : ${errText.slice(0, 300)}` }, 502);
-  }
-
-  const submitData = await submitRes.json();
-  const jobId = crypto.randomUUID();
-  const now = Date.now();
-
-  const job = {
-    id: jobId,
-    status: "queued",
-    photoKey: body.photoKey,
-    styleId: body.styleId,
-    styleLabel: style.label,
-    model: modelChoice,
-    duration,
-    prompt,
-    falRequestId: submitData.request_id,
-    falStatusUrl: submitData.status_url,
-    falResponseUrl: submitData.response_url,
-    createdAt: now,
-    updatedAt: now,
-  };
-
-  await env.JOBS_KV.put(`job:${jobId}`, JSON.stringify(job));
-  return json({ jobId, status: job.status });
-}
-
-async function handleStatus(pathname, env) {
-  const jobId = pathname.replace("/api/status/", "");
-  const raw = await env.JOBS_KV.get(`job:${jobId}`);
-  if (!raw) return json({ error: "Génération introuvable." }, 404);
-
-  let job = JSON.parse(raw);
-  if (job.status === "completed" || job.status === "failed") {
-    return json(publicJob(job));
-  }
-
-  const statusRes = await fetch(job.falStatusUrl, {
-    headers: { Authorization: `Key ${env.FAL_KEY}` },
-  });
-
-  if (!statusRes.ok) {
-    return json(publicJob(job));
-  }
-
-  const statusData = await statusRes.json();
-
-  if (statusData.status === "COMPLETED") {
-    const resultRes = await fetch(job.falResponseUrl, {
-      headers: { Authorization: `Key ${env.FAL_KEY}` },
+  if (thumb && typeof thumb !== "string") {
+    await env.MEDIA.put(`${GALLERY_PREFIX}${id}.jpg`, thumb.stream(), {
+      httpMetadata: { contentType: "image/jpeg" },
     });
-    if (!resultRes.ok) {
-      job = { ...job, status: "failed", error: "Échec de récupération du résultat.", updatedAt: Date.now() };
-      await env.JOBS_KV.put(`job:${jobId}`, JSON.stringify(job));
-      return json(publicJob(job));
-    }
-    const resultData = await resultRes.json();
-    const videoUrl = resultData?.video?.url;
-    if (!videoUrl) {
-      job = { ...job, status: "failed", error: "Aucune vidéo dans le résultat.", updatedAt: Date.now() };
-      await env.JOBS_KV.put(`job:${jobId}`, JSON.stringify(job));
-      return json(publicJob(job));
-    }
-
-    const videoRes = await fetch(videoUrl);
-    const videoKey = `videos/${jobId}.mp4`;
-    await env.MEDIA.put(videoKey, videoRes.body, {
-      httpMetadata: { contentType: "video/mp4" },
-    });
-
-    job = { ...job, status: "completed", videoKey, updatedAt: Date.now() };
-    await env.JOBS_KV.put(`job:${jobId}`, JSON.stringify(job));
-    await addToGallery(env, job);
-    return json(publicJob(job));
   }
 
-  if (statusData.status === "ERROR" || statusData.status === "FAILED") {
-    job = { ...job, status: "failed", error: "La génération a échoué.", updatedAt: Date.now() };
-    await env.JOBS_KV.put(`job:${jobId}`, JSON.stringify(job));
-    return json(publicJob(job));
-  }
-
-  job = {
-    ...job,
-    status: statusData.status === "IN_PROGRESS" ? "processing" : "queued",
-    updatedAt: Date.now(),
-  };
-  await env.JOBS_KV.put(`job:${jobId}`, JSON.stringify(job));
-  return json(publicJob(job));
+  return json({ ok: true, id });
 }
 
 async function handleGallery(env) {
-  const raw = await env.JOBS_KV.get(GALLERY_KEY);
-  const entries = raw ? JSON.parse(raw) : [];
-  return json({ items: entries });
+  const listed = await env.MEDIA.list({
+    prefix: GALLERY_PREFIX,
+    include: ["customMetadata"],
+    limit: 1000,
+  });
+
+  const items = listed.objects
+    .filter((o) => o.key.endsWith(".webm"))
+    .map((o) => ({
+      id: o.key.slice(GALLERY_PREFIX.length, -".webm".length),
+      videoUrl: `/api/media/${o.key}`,
+      thumbUrl: `/api/media/${o.key.replace(".webm", ".jpg")}`,
+      styleLabel: (o.customMetadata && o.customMetadata.styleLabel) || "Scène",
+      createdAt: o.uploaded,
+    }))
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, GALLERY_LIMIT);
+
+  return json({ items });
 }
 
 // ---------- Helpers ----------
-
-function publicJob(job) {
-  return {
-    id: job.id,
-    status: job.status,
-    styleLabel: job.styleLabel,
-    error: job.error || null,
-    videoUrl: job.videoKey ? `/api/media/${job.videoKey}` : null,
-  };
-}
-
-async function addToGallery(env, job) {
-  const raw = await env.JOBS_KV.get(GALLERY_KEY);
-  const entries = raw ? JSON.parse(raw) : [];
-  entries.unshift({
-    id: job.id,
-    styleLabel: job.styleLabel,
-    photoUrl: `/api/media/${job.photoKey}`,
-    videoUrl: `/api/media/${job.videoKey}`,
-    createdAt: job.createdAt,
-  });
-  await env.JOBS_KV.put(GALLERY_KEY, JSON.stringify(entries.slice(0, GALLERY_LIMIT)));
-}
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -335,6 +157,7 @@ header{padding:44px 0 24px;text-align:center;}
 header h1{font-family:'Playfair Display',serif;font-weight:600;font-size:30px;letter-spacing:0.01em;}
 header h1 em{color:var(--gold);font-style:italic;}
 header p{color:var(--text-m);font-size:13.5px;margin-top:8px;line-height:1.6;}
+header .free-badge{display:inline-block;margin-top:12px;padding:5px 14px;border-radius:100px;background:rgba(201,162,39,0.12);border:1px solid rgba(201,162,39,0.3);color:var(--gold-l);font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;}
 
 .card{background:var(--card);border:1px solid var(--card-b);border-radius:var(--r);box-shadow:var(--shadow);padding:20px;margin-bottom:16px;}
 .section-lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.14em;color:var(--gold);margin-bottom:12px;}
@@ -342,7 +165,7 @@ header p{color:var(--text-m);font-size:13.5px;margin-top:8px;line-height:1.6;}
 #dropzone{border:1.5px dashed rgba(255,255,255,0.15);border-radius:12px;padding:28px 16px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;}
 #dropzone:hover,#dropzone.drag{border-color:var(--gold);background:rgba(201,162,39,0.06);}
 #dropzone .dz-icon{font-size:30px;margin-bottom:8px;}
-#dropzone .dz-text{font-size:13.5px;color:var(--text-m);}
+#dropzone .dz-text{font-size:13.5px;color:var(--text-m);white-space:pre-line;}
 #preview-wrap{display:none;position:relative;}
 #preview-wrap.show{display:block;}
 #preview{width:100%;border-radius:12px;display:block;max-height:340px;object-fit:cover;}
@@ -355,9 +178,6 @@ input[type=file]{display:none;}
 .style-emoji{font-size:20px;margin-bottom:4px;}
 .style-label{font-size:13.5px;font-weight:600;margin-bottom:2px;}
 .style-desc{font-size:11.5px;color:var(--text-l);line-height:1.4;}
-
-textarea{width:100%;background:var(--bg2);border:1.5px solid var(--card-b);border-radius:10px;padding:12px 14px;color:var(--text);font-family:'Inter',sans-serif;font-size:13.5px;resize:vertical;min-height:60px;outline:none;}
-textarea:focus{border-color:var(--gold);}
 
 .row{display:flex;gap:10px;}
 .toggle-group{display:flex;gap:8px;flex:1;}
@@ -372,48 +192,49 @@ textarea:focus{border-color:var(--gold);}
 .spinner{width:36px;height:36px;border:3px solid rgba(201,162,39,0.2);border-top-color:var(--gold);border-radius:50%;margin:0 auto 14px;animation:spin 0.9s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
 #status-text{font-size:13.5px;color:var(--text-m);}
+#progress-track{width:100%;height:4px;border-radius:4px;background:var(--bg2);margin-top:14px;overflow:hidden;}
+#progress-bar{height:100%;width:0%;background:var(--gold);transition:width .1s linear;}
 
 #result-card{display:none;}
 #result-card.show{display:block;}
 #result-video{width:100%;border-radius:12px;display:block;}
 .result-actions{display:flex;gap:10px;margin-top:14px;}
 .btn-sec{flex:1;padding:12px;border-radius:100px;background:var(--bg2);border:1.5px solid var(--card-b);color:var(--text);font-size:13px;text-align:center;cursor:pointer;text-decoration:none;}
+.btn-sec.sel{border-color:var(--gold);color:var(--gold-l);}
 
 .gallery-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .gallery-item{border-radius:12px;overflow:hidden;position:relative;cursor:pointer;background:var(--bg2);aspect-ratio:1;}
 .gallery-item img,.gallery-item video{width:100%;height:100%;object-fit:cover;}
 .gallery-item .g-lbl{position:absolute;bottom:0;left:0;right:0;padding:8px;font-size:10.5px;background:linear-gradient(transparent,rgba(0,0,0,0.75));color:#fff;}
 .empty-note{color:var(--text-l);font-size:12.5px;text-align:center;padding:20px 0;}
+.hint{color:var(--text-l);font-size:11px;margin-top:10px;line-height:1.5;}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
     <h1>Ciné<em>Scènes</em> IA</h1>
-    <p>Transformez une photo en scène vidéo cinématographique grâce à l'IA</p>
+    <p>Transformez une photo en scène vidéo cinématographique</p>
+    <div class="free-badge">100% gratuit · tournage dans votre navigateur</div>
   </header>
 
   <div class="card">
     <div class="section-lbl">Votre photo</div>
     <div id="dropzone">
       <div class="dz-icon">📷</div>
-      <div class="dz-text">Touchez pour choisir une photo<br>JPEG, PNG ou WebP · 12 Mo max</div>
+      <div class="dz-text">Touchez pour choisir une photo</div>
     </div>
     <div id="preview-wrap">
       <img id="preview" alt="Aperçu">
       <button id="preview-clear">✕</button>
     </div>
     <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp">
+    <div class="hint">Votre photo reste sur votre appareil : elle n'est jamais envoyée à un serveur, sauf si vous choisissez de partager la scène finale dans la galerie.</div>
   </div>
 
   <div class="card">
     <div class="section-lbl">Style cinématographique</div>
     <div class="style-grid">${STYLE_CARDS}</div>
-  </div>
-
-  <div class="card">
-    <div class="section-lbl">Touche personnelle (optionnel)</div>
-    <textarea id="custom-prompt" maxlength="300" placeholder="Ex : ambiance mer et vent léger, robe qui flotte..."></textarea>
   </div>
 
   <div class="card">
@@ -425,9 +246,9 @@ textarea:focus{border-color:var(--gold);}
       </div>
     </div>
     <div class="row">
-      <div class="toggle-group" id="model-group">
-        <div class="toggle sel" data-model="standard">Standard</div>
-        <div class="toggle" data-model="pro">Pro (qualité +)</div>
+      <div class="toggle-group" id="quality-group">
+        <div class="toggle sel" data-quality="hd">HD (720p)</div>
+        <div class="toggle" data-quality="fhd">Full HD (1080p)</div>
       </div>
     </div>
   </div>
@@ -437,13 +258,17 @@ textarea:focus{border-color:var(--gold);}
   <div class="card" id="status-card">
     <div class="spinner"></div>
     <div id="status-text">Préparation...</div>
+    <div id="progress-track"><div id="progress-bar"></div></div>
   </div>
 
   <div class="card" id="result-card">
     <div class="section-lbl">Votre scène</div>
     <video id="result-video" controls autoplay loop muted playsinline></video>
     <div class="result-actions">
-      <a class="btn-sec" id="download-link" download>Télécharger</a>
+      <a class="btn-sec" id="download-link" download="cine-scene.webm">Télécharger</a>
+      <div class="btn-sec" id="save-gallery-btn">Partager dans la galerie</div>
+    </div>
+    <div class="result-actions">
       <div class="btn-sec" id="new-scene-btn">Nouvelle scène</div>
     </div>
   </div>
@@ -451,179 +276,352 @@ textarea:focus{border-color:var(--gold);}
   <div class="card">
     <div class="section-lbl">Galerie</div>
     <div class="gallery-grid" id="gallery-grid"></div>
-    <div class="empty-note" id="gallery-empty" style="display:none;">Aucune scène pour le moment.</div>
+    <div class="empty-note" id="gallery-empty" style="display:none;">Aucune scène partagée pour le moment.</div>
   </div>
 </div>
 
 <script>
-const state = { photoKey: null, styleId: null, duration: "5", model: "standard" };
+var STYLE_RECIPES = {
+  drone:   { scaleFrom:1.15, scaleTo:1.00, panFrom:{x:-0.15,y:0.08}, panTo:{x:0.15,y:-0.05}, filter:'contrast(1.08) saturate(1.15) brightness(1.03)', vignette:0.15, grain:0.04, glow:0 },
+  closeup: { scaleFrom:1.00, scaleTo:1.22, panFrom:{x:0,y:0.02}, panTo:{x:0,y:-0.02}, filter:'contrast(1.05) saturate(1.05) sepia(0.08) brightness(1.02)', vignette:0.35, grain:0.05, glow:0.15 },
+  golden:  { scaleFrom:1.05, scaleTo:1.18, panFrom:{x:-0.08,y:0}, panTo:{x:0.08,y:-0.03}, filter:'sepia(0.25) saturate(1.3) contrast(1.05) brightness(1.08)', vignette:0.2, grain:0.03, glow:0.25 },
+  noir:    { scaleFrom:1.10, scaleTo:1.00, panFrom:{x:0.1,y:0}, panTo:{x:-0.1,y:0.05}, filter:'grayscale(1) contrast(1.35) brightness(0.95)', vignette:0.45, grain:0.08, glow:0 },
+  dream:   { scaleFrom:1.00, scaleTo:1.12, panFrom:{x:0,y:0.05}, panTo:{x:0,y:-0.05}, filter:'saturate(0.9) contrast(0.95) brightness(1.1)', vignette:0.15, grain:0.02, glow:0.4, particles:true },
+  action:  { scaleFrom:1.00, scaleTo:1.30, panFrom:{x:-0.05,y:0}, panTo:{x:0.05,y:0}, filter:'contrast(1.25) saturate(1.35)', vignette:0.25, grain:0.06, glow:0, shake:0.01 }
+};
 
-const dropzone = document.getElementById('dropzone');
-const fileInput = document.getElementById('file-input');
-const previewWrap = document.getElementById('preview-wrap');
-const preview = document.getElementById('preview');
-const previewClear = document.getElementById('preview-clear');
-const generateBtn = document.getElementById('generate-btn');
-const statusCard = document.getElementById('status-card');
-const statusText = document.getElementById('status-text');
-const resultCard = document.getElementById('result-card');
-const resultVideo = document.getElementById('result-video');
-const downloadLink = document.getElementById('download-link');
+var state = { file: null, styleId: null, duration: 5, quality: 'hd', lastBlob: null, lastStyleLabel: null };
 
-dropzone.addEventListener('click', () => fileInput.click());
-fileInput.addEventListener('change', () => { if (fileInput.files[0]) uploadPhoto(fileInput.files[0]); });
-['dragover','dragleave','drop'].forEach(evt => {
-  dropzone.addEventListener(evt, e => {
+var dropzone = document.getElementById('dropzone');
+var fileInput = document.getElementById('file-input');
+var previewWrap = document.getElementById('preview-wrap');
+var preview = document.getElementById('preview');
+var previewClear = document.getElementById('preview-clear');
+var generateBtn = document.getElementById('generate-btn');
+var statusCard = document.getElementById('status-card');
+var statusText = document.getElementById('status-text');
+var progressBar = document.getElementById('progress-bar');
+var resultCard = document.getElementById('result-card');
+var resultVideo = document.getElementById('result-video');
+var downloadLink = document.getElementById('download-link');
+var saveGalleryBtn = document.getElementById('save-gallery-btn');
+
+dropzone.addEventListener('click', function () { fileInput.click(); });
+fileInput.addEventListener('change', function () { if (fileInput.files[0]) selectPhoto(fileInput.files[0]); });
+['dragover', 'dragleave', 'drop'].forEach(function (evt) {
+  dropzone.addEventListener(evt, function (e) {
     e.preventDefault();
     dropzone.classList.toggle('drag', evt === 'dragover');
-    if (evt === 'drop' && e.dataTransfer.files[0]) uploadPhoto(e.dataTransfer.files[0]);
+    if (evt === 'drop' && e.dataTransfer.files[0]) selectPhoto(e.dataTransfer.files[0]);
   });
 });
-previewClear.addEventListener('click', e => {
+previewClear.addEventListener('click', function (e) {
   e.stopPropagation();
-  state.photoKey = null;
+  state.file = null;
   previewWrap.classList.remove('show');
   dropzone.style.display = 'block';
   updateGenerateState();
 });
 
-async function uploadPhoto(file) {
-  const fd = new FormData();
-  fd.append('photo', file);
-  dropzone.querySelector('.dz-text').textContent = 'Envoi en cours...';
-  try {
-    const res = await fetch('/api/upload', { method: 'POST', body: fd });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Échec de l\\'envoi');
-    state.photoKey = data.photoKey;
-    preview.src = data.previewUrl;
-    previewWrap.classList.add('show');
-    dropzone.style.display = 'none';
-  } catch (err) {
-    alert(err.message);
-  } finally {
-    dropzone.querySelector('.dz-text').textContent = 'Touchez pour choisir une photo\\nJPEG, PNG ou WebP · 12 Mo max';
+function selectPhoto(file) {
+  if (!file.type || file.type.indexOf('image/') !== 0) {
+    alert('Veuillez choisir une image (JPEG, PNG ou WebP).');
+    return;
   }
+  state.file = file;
+  preview.src = URL.createObjectURL(file);
+  previewWrap.classList.add('show');
+  dropzone.style.display = 'none';
   updateGenerateState();
 }
 
-document.querySelectorAll('.style-card').forEach(el => {
-  el.addEventListener('click', () => {
-    document.querySelectorAll('.style-card').forEach(c => c.classList.remove('sel'));
+document.querySelectorAll('.style-card').forEach(function (el) {
+  el.addEventListener('click', function () {
+    document.querySelectorAll('.style-card').forEach(function (c) { c.classList.remove('sel'); });
     el.classList.add('sel');
     state.styleId = el.dataset.style;
     updateGenerateState();
   });
 });
-
-document.querySelectorAll('#duration-group .toggle').forEach(el => {
-  el.addEventListener('click', () => {
-    document.querySelectorAll('#duration-group .toggle').forEach(c => c.classList.remove('sel'));
+document.querySelectorAll('#duration-group .toggle').forEach(function (el) {
+  el.addEventListener('click', function () {
+    document.querySelectorAll('#duration-group .toggle').forEach(function (c) { c.classList.remove('sel'); });
     el.classList.add('sel');
-    state.duration = el.dataset.duration;
+    state.duration = parseInt(el.dataset.duration, 10);
   });
 });
-document.querySelectorAll('#model-group .toggle').forEach(el => {
-  el.addEventListener('click', () => {
-    document.querySelectorAll('#model-group .toggle').forEach(c => c.classList.remove('sel'));
+document.querySelectorAll('#quality-group .toggle').forEach(function (el) {
+  el.addEventListener('click', function () {
+    document.querySelectorAll('#quality-group .toggle').forEach(function (c) { c.classList.remove('sel'); });
     el.classList.add('sel');
-    state.model = el.dataset.model;
+    state.quality = el.dataset.quality;
   });
 });
 
 function updateGenerateState() {
-  generateBtn.disabled = !(state.photoKey && state.styleId);
+  generateBtn.disabled = !(state.file && state.styleId);
 }
 
-generateBtn.addEventListener('click', async () => {
+function ease(t) { return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; }
+
+function createParticles(W, H) {
+  var arr = [];
+  for (var i = 0; i < 40; i++) {
+    arr.push({ x: Math.random() * W, y: Math.random() * H, r: 1 + Math.random() * 2.5, vy: -(8 + Math.random() * 15), phase: Math.random() * 1000 });
+  }
+  return arr;
+}
+
+function drawParticles(ctx, particles, elapsedMs, W, H) {
+  ctx.save();
+  for (var i = 0; i < particles.length; i++) {
+    var p = particles[i];
+    var y = ((p.y + p.vy * (elapsedMs / 1000)) % H + H) % H;
+    var alpha = 0.25 + 0.25 * Math.sin((elapsedMs + p.phase) / 500);
+    ctx.globalAlpha = Math.max(0, alpha);
+    ctx.fillStyle = '#F2E6C9';
+    ctx.beginPath();
+    ctx.arc(p.x, y, p.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function makeGrainTile() {
+  var c = document.createElement('canvas');
+  c.width = 128; c.height = 128;
+  var gctx = c.getContext('2d');
+  var data = gctx.createImageData(128, 128);
+  for (var i = 0; i < data.data.length; i += 4) {
+    var v = Math.random() * 255;
+    data.data[i] = v; data.data[i + 1] = v; data.data[i + 2] = v; data.data[i + 3] = 255;
+  }
+  gctx.putImageData(data, 0, 0);
+  return c;
+}
+
+function renderScene(img, styleId, durationSec, quality, onProgress, onDone, onError) {
+  if (typeof MediaRecorder === 'undefined' || !HTMLCanvasElement.prototype.captureStream) {
+    onError('Votre navigateur ne supporte pas l\\'enregistrement vidéo local. Essayez avec un navigateur récent (Chrome, Edge, Firefox).');
+    return;
+  }
+
+  var recipe = STYLE_RECIPES[styleId];
+  var W = quality === 'fhd' ? 1920 : 1280;
+  var H = quality === 'fhd' ? 1080 : 720;
+
+  var canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  var ctx = canvas.getContext('2d');
+
+  var maxScale = Math.max(recipe.scaleFrom, recipe.scaleTo) * 1.15;
+  var imgRatio = img.naturalWidth / img.naturalHeight;
+  var canvasRatio = W / H;
+  var baseW, baseH;
+  if (imgRatio > canvasRatio) { baseH = H * maxScale; baseW = baseH * imgRatio; }
+  else { baseW = W * maxScale; baseH = baseW / imgRatio; }
+  var maxPanX = (baseW - W) / 2;
+  var maxPanY = (baseH - H) / 2;
+
+  var grainTile = makeGrainTile();
+  var particles = recipe.particles ? createParticles(W, H) : null;
+
+  var mimeType = 'video/webm;codecs=vp9';
+  if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'video/webm;codecs=vp8';
+  if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'video/webm';
+
+  var stream = canvas.captureStream(30);
+  var recorder;
+  try {
+    recorder = new MediaRecorder(stream, { mimeType: mimeType, videoBitsPerSecond: quality === 'fhd' ? 8000000 : 4000000 });
+  } catch (e) {
+    onError('Impossible de démarrer l\\'enregistrement vidéo sur ce navigateur.');
+    return;
+  }
+
+  var chunks = [];
+  recorder.ondataavailable = function (e) { if (e.data.size > 0) chunks.push(e.data); };
+  recorder.onstop = function () {
+    var blob = new Blob(chunks, { type: 'video/webm' });
+    canvas.toBlob(function (thumbBlob) { onDone(blob, thumbBlob); }, 'image/jpeg', 0.82);
+  };
+
+  var startTime = null;
+  var durationMs = durationSec * 1000;
+
+  function frame(ts) {
+    if (!startTime) startTime = ts;
+    var elapsed = ts - startTime;
+    var t = Math.min(elapsed / durationMs, 1);
+    var et = ease(t);
+    onProgress(t);
+
+    var scale = recipe.scaleFrom + (recipe.scaleTo - recipe.scaleFrom) * et;
+    var scaleRatio = scale / maxScale;
+    var panX = (recipe.panFrom.x + (recipe.panTo.x - recipe.panFrom.x) * et) * maxPanX;
+    var panY = (recipe.panFrom.y + (recipe.panTo.y - recipe.panFrom.y) * et) * maxPanY;
+    if (recipe.shake) {
+      panX += (Math.random() - 0.5) * recipe.shake * W;
+      panY += (Math.random() - 0.5) * recipe.shake * H;
+    }
+
+    var w = baseW * scaleRatio;
+    var h = baseH * scaleRatio;
+    var x = (W - w) / 2 + panX * scaleRatio;
+    var y = (H - h) / 2 + panY * scaleRatio;
+
+    ctx.save();
+    ctx.filter = recipe.filter;
+    ctx.drawImage(img, x, y, w, h);
+    ctx.restore();
+
+    if (recipe.glow) {
+      ctx.save();
+      ctx.globalAlpha = recipe.glow * 0.5;
+      ctx.filter = 'blur(20px) brightness(1.3)';
+      ctx.drawImage(img, x, y, w, h);
+      ctx.restore();
+    }
+
+    if (particles) drawParticles(ctx, particles, elapsed, W, H);
+
+    if (recipe.vignette) {
+      var grad = ctx.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.75);
+      grad.addColorStop(0, 'rgba(0,0,0,0)');
+      grad.addColorStop(1, 'rgba(0,0,0,' + recipe.vignette + ')');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    if (recipe.grain) {
+      ctx.save();
+      ctx.globalAlpha = recipe.grain;
+      ctx.globalCompositeOperation = 'overlay';
+      var gx = Math.floor(Math.random() * 64), gy = Math.floor(Math.random() * 64);
+      for (var py = -gy; py < H; py += 128) {
+        for (var px = -gx; px < W; px += 128) ctx.drawImage(grainTile, px, py);
+      }
+      ctx.restore();
+    }
+
+    var bar = H * 0.06;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, bar);
+    ctx.fillRect(0, H - bar, W, bar);
+
+    if (t < 1) requestAnimationFrame(frame);
+    else recorder.stop();
+  }
+
+  recorder.start();
+  requestAnimationFrame(frame);
+}
+
+generateBtn.addEventListener('click', function () {
   generateBtn.disabled = true;
   resultCard.classList.remove('show');
   statusCard.classList.add('show');
-  statusText.textContent = 'Le réalisateur IA prépare votre scène...';
+  statusText.textContent = 'Le réalisateur IA prépare le tournage...';
+  progressBar.style.width = '0%';
 
-  try {
-    const res = await fetch('/api/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        photoKey: state.photoKey,
-        styleId: state.styleId,
-        customPrompt: document.getElementById('custom-prompt').value,
-        duration: state.duration,
-        model: state.model,
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Échec de la génération');
-    await pollStatus(data.jobId);
-  } catch (err) {
+  var img = new Image();
+  img.onload = function () {
+    renderScene(img, state.styleId, state.duration, state.quality,
+      function (t) {
+        progressBar.style.width = Math.round(t * 100) + '%';
+        statusText.textContent = 'Tournage en cours... ' + Math.round(t * 100) + '%';
+      },
+      function (videoBlob, thumbBlob) {
+        statusCard.classList.remove('show');
+        state.lastBlob = videoBlob;
+        state.lastThumb = thumbBlob;
+        state.lastStyleLabel = document.querySelector('.style-card.sel .style-label').textContent;
+        var url = URL.createObjectURL(videoBlob);
+        resultVideo.src = url;
+        downloadLink.href = url;
+        saveGalleryBtn.classList.remove('sel');
+        saveGalleryBtn.textContent = 'Partager dans la galerie';
+        resultCard.classList.add('show');
+        generateBtn.disabled = false;
+      },
+      function (errMsg) {
+        statusCard.classList.remove('show');
+        alert(errMsg);
+        generateBtn.disabled = false;
+      }
+    );
+  };
+  img.onerror = function () {
     statusCard.classList.remove('show');
-    alert(err.message);
+    alert('Impossible de lire cette photo.');
     generateBtn.disabled = false;
-  }
+  };
+  img.src = URL.createObjectURL(state.file);
 });
 
-async function pollStatus(jobId) {
-  const labels = { queued: 'En file d\\'attente...', processing: 'Génération de la scène en cours...' };
-  for (;;) {
-    const res = await fetch('/api/status/' + jobId);
-    const data = await res.json();
-    if (data.status === 'completed') {
-      statusCard.classList.remove('show');
-      resultVideo.src = data.videoUrl;
-      downloadLink.href = data.videoUrl;
-      resultCard.classList.add('show');
-      generateBtn.disabled = false;
-      loadGallery();
-      return;
-    }
-    if (data.status === 'failed') {
-      statusCard.classList.remove('show');
-      alert(data.error || 'La génération a échoué.');
-      generateBtn.disabled = false;
-      return;
-    }
-    statusText.textContent = labels[data.status] || 'Traitement en cours...';
-    await new Promise(r => setTimeout(r, 3000));
-  }
-}
+saveGalleryBtn.addEventListener('click', function () {
+  if (!state.lastBlob) return;
+  saveGalleryBtn.textContent = 'Envoi...';
+  var fd = new FormData();
+  fd.append('video', state.lastBlob, 'scene.webm');
+  if (state.lastThumb) fd.append('thumb', state.lastThumb, 'thumb.jpg');
+  fd.append('styleLabel', state.lastStyleLabel || 'Scène');
+  fetch('/api/gallery-save', { method: 'POST', body: fd })
+    .then(function (res) { return res.json(); })
+    .then(function (data) {
+      if (data.ok) {
+        saveGalleryBtn.textContent = 'Partagé ✓';
+        saveGalleryBtn.classList.add('sel');
+        loadGallery();
+      } else {
+        saveGalleryBtn.textContent = 'Échec, réessayer';
+      }
+    })
+    .catch(function () { saveGalleryBtn.textContent = 'Échec, réessayer'; });
+});
 
-document.getElementById('new-scene-btn').addEventListener('click', () => {
+document.getElementById('new-scene-btn').addEventListener('click', function () {
   resultCard.classList.remove('show');
   previewWrap.classList.remove('show');
   dropzone.style.display = 'block';
-  state.photoKey = null;
-  document.querySelectorAll('.style-card').forEach(c => c.classList.remove('sel'));
+  state.file = null;
+  document.querySelectorAll('.style-card').forEach(function (c) { c.classList.remove('sel'); });
   state.styleId = null;
-  document.getElementById('custom-prompt').value = '';
   updateGenerateState();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 });
 
-async function loadGallery() {
-  const grid = document.getElementById('gallery-grid');
-  const empty = document.getElementById('gallery-empty');
-  const res = await fetch('/api/gallery');
-  const data = await res.json();
-  grid.innerHTML = '';
-  if (!data.items || !data.items.length) {
-    empty.style.display = 'block';
-    return;
-  }
-  empty.style.display = 'none';
-  data.items.forEach(item => {
-    const div = document.createElement('div');
-    div.className = 'gallery-item';
-    div.innerHTML = '<video src="' + item.videoUrl + '" muted loop playsinline></video><div class="g-lbl">' + item.styleLabel + '</div>';
-    div.addEventListener('mouseenter', () => div.querySelector('video').play());
-    div.addEventListener('mouseleave', () => div.querySelector('video').pause());
-    div.addEventListener('click', () => {
-      resultVideo.src = item.videoUrl;
-      downloadLink.href = item.videoUrl;
-      resultCard.classList.add('show');
-      resultCard.scrollIntoView({ behavior: 'smooth' });
+function loadGallery() {
+  var grid = document.getElementById('gallery-grid');
+  var empty = document.getElementById('gallery-empty');
+  fetch('/api/gallery').then(function (res) { return res.json(); }).then(function (data) {
+    grid.innerHTML = '';
+    if (!data.items || !data.items.length) {
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+    data.items.forEach(function (item) {
+      var div = document.createElement('div');
+      div.className = 'gallery-item';
+      var video = document.createElement('video');
+      video.src = item.videoUrl;
+      video.muted = true; video.loop = true; video.playsInline = true;
+      var lbl = document.createElement('div');
+      lbl.className = 'g-lbl';
+      lbl.textContent = item.styleLabel;
+      div.appendChild(video);
+      div.appendChild(lbl);
+      div.addEventListener('mouseenter', function () { video.play(); });
+      div.addEventListener('mouseleave', function () { video.pause(); });
+      div.addEventListener('click', function () {
+        resultVideo.src = item.videoUrl;
+        downloadLink.href = item.videoUrl;
+        resultCard.classList.add('show');
+        resultCard.scrollIntoView({ behavior: 'smooth' });
+      });
+      grid.appendChild(div);
     });
-    grid.appendChild(div);
   });
 }
 

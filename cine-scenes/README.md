@@ -1,49 +1,54 @@
 # CinéScènes IA
 
-Application indépendante (Cloudflare Worker mono-fichier, comme `worker-parenthese-v15.js`) qui transforme une photo uploadée par l'utilisateur en scène vidéo cinématographique générée par IA.
+Application indépendante (Cloudflare Worker mono-fichier, comme `worker-parenthese-v15.js`) qui transforme une photo en scène vidéo cinématographique — **100% gratuite, sans API payante ni clé à configurer.**
 
-## Pourquoi fal.ai et pas Artlist ?
+## Comment ça marche (et pourquoi c'est gratuit)
 
-L'API publique d'Artlist (`developer.artlist.io`) ne couvre aujourd'hui que le catalogue musical — pas de génération image/vidéo accessible en API REST avec une clé classique. La génération IA d'Artlist n'est disponible que via des intégrations comme celle-ci (assistant), pas par un serveur tiers.
+Il n'existe pas aujourd'hui de fournisseur d'IA vidéo (fal.ai, Runway, Kling, Artlist...) proposant de la génération illimitée gratuite : ces modèles tournent sur des GPU coûteux et sont facturés à la génération.
 
-Le backend utilise donc **[fal.ai](https://fal.ai)**, qui expose une vraie API REST (`queue.fal.run`) avec des modèles image-to-video de qualité cinéma (Kling). L'appel au fournisseur est isolé dans `handleGenerate` / `handleStatus` dans `worker.js` : le remplacer par un autre fournisseur (ou par Artlist, le jour où ils ouvrent une API de génération) ne touche que ces deux fonctions.
+À la place, l'app recrée l'effet "cinéma" par un procédé classique de montage, calculé **directement dans le navigateur** :
+- travelling/zoom façon Ken Burns (le mouvement de caméra utilisé dans tous les documentaires et rétrospectives photo)
+- étalonnage couleur façon film (chaud, noir & blanc contrasté, désaturé et onirique, etc. selon le style choisi)
+- vignette, grain filmique animé, bandes noires façon cinémascope
+- pour le style "Rêve Éthéré", des particules de lumière flottantes
 
-## Fonctionnement
+Le résultat est filmé en direct via `canvas.captureStream()` + `MediaRecorder`, exporté en vidéo `.webm`. Aucune photo n'est envoyée à un serveur : tout se passe sur l'appareil de la personne qui utilise l'app, sauf si elle choisit explicitement de partager sa scène dans la galerie publique (auquel cas seule la vidéo finale, pas la photo d'origine, est stockée).
 
-1. L'utilisateur uploade une photo (`POST /api/upload`) → stockée dans R2.
-2. Il choisit un style cinématographique (6 préréglages) + une touche de prompt libre optionnelle + durée (5/10s) + qualité (standard/pro).
-3. `POST /api/generate` construit le prompt, soumet le job à fal.ai, enregistre l'état dans KV.
-4. Le frontend interroge `GET /api/status/:jobId` toutes les 3s. Une fois terminé, la vidéo est téléchargée depuis fal.ai et stockée dans R2.
-5. La scène apparaît dans la galerie (`GET /api/gallery`), consultable ensuite par tous les visiteurs de l'app.
+C'est une vraie technique de mise en scène cinéma (pas de génération de mouvement par IA façon Kling/Runway) : pas de personnes qui bougent dans l'image, mais un vrai rendu "scène de film" à partir d'une photo fixe.
+
+## Fonctionnement technique
+
+1. La photo est chargée localement dans une balise `<canvas>`.
+2. `renderScene()` (dans `worker.js`, section frontend) anime zoom/travelling + filtres pendant 5 ou 10 secondes, en HD (720p) ou Full HD (1080p).
+3. Le flux du canvas est enregistré en `.webm` via `MediaRecorder`.
+4. La personne peut télécharger la vidéo, et/ou cliquer "Partager dans la galerie" pour l'envoyer à `POST /api/gallery-save`, qui la stocke dans R2.
+5. `GET /api/gallery` liste les vidéos partagées (lecture directe du bucket R2, aucune base de données nécessaire).
 
 ## Mise en place
 
-Le bucket R2 (`cine-scenes-media`) et le namespace KV (`cine-scenes-jobs`, id déjà renseigné dans `wrangler.toml`) ont déjà été créés sur le compte Cloudflare. Il reste deux étapes, à faire depuis le tableau de bord Cloudflare (pas besoin de ligne de commande) :
-
-### 1. Créer le Worker et coller le code
+Le bucket R2 (`cine-scenes-media`, pour la galerie publique uniquement) a déjà été créé sur le compte Cloudflare. Il reste une seule étape, depuis le tableau de bord Cloudflare :
 
 1. Sur [dash.cloudflare.com](https://dash.cloudflare.com) → **Workers & Pages** → **Create** → **Worker**.
-2. Donnez-lui un nom, par ex. `cine-scenes-ia`, puis **Deploy** (le code par défaut sera remplacé juste après).
-3. Cliquez **Edit code**, effacez tout, et collez le contenu du fichier `worker.js` de ce dossier. **Save and deploy**.
-4. Allez dans **Settings → Bindings** de ce Worker, ajoutez :
-   - un binding **R2 Bucket** : nom `MEDIA` → bucket `cine-scenes-media`
-   - un binding **KV Namespace** : nom `JOBS_KV` → namespace `cine-scenes-jobs`
-5. Toujours dans **Settings → Variables and Secrets**, ajoutez un secret nommé `FAL_KEY` (voir étape suivante pour la valeur).
+2. Donnez-lui un nom, par ex. `cine-scenes-ia`, puis **Deploy**.
+3. Cliquez **Edit code**, effacez tout, collez le contenu de `worker.js`. **Save and deploy**.
+4. **Settings → Bindings** → ajoutez un binding **R2 Bucket** : nom `MEDIA` → bucket `cine-scenes-media`.
 
-### 2. Obtenir une clé fal.ai (seule étape que je ne peux pas faire à ta place)
+Aucun secret, aucune clé API, aucun compte tiers à créer. L'app est utilisable dès le déploiement.
 
-Crée un compte sur [fal.ai/dashboard/keys](https://fal.ai/dashboard/keys), génère une clé API, et colle-la comme valeur du secret `FAL_KEY` créé ci-dessus.
+*(La galerie partagée est optionnelle — sans le binding R2, tout fonctionne sauf le bouton "Partager dans la galerie".)*
 
-Une fois le secret enregistré, l'app est en ligne à l'URL `https://cine-scenes-ia.<ton-sous-domaine>.workers.dev`.
+## Limites à connaître
 
-*(Alternative pour utilisateurs avancés : `wrangler r2 bucket create`, `wrangler kv namespace create`, `wrangler secret put FAL_KEY` puis `wrangler deploy` en CLI — non nécessaire ici puisque les ressources existent déjà.)*
+- Format d'export : `.webm` (lu nativement par tous les navigateurs et par VLC ; pas nativement par QuickTime/iMovie — une conversion en `.mp4` serait nécessaire pour du montage Apple).
+- Nécessite un navigateur récent supportant `MediaRecorder` + `canvas.captureStream()` (Chrome, Edge, Firefox — support partiel sur anciennes versions de Safari).
+- L'enregistrement dure aussi longtemps que la vidéo (5 ou 10 secondes réelles), puisqu'il s'agit d'un vrai tournage en temps réel du canvas.
+- Ce n'est pas de la génération de mouvement par IA (les éléments de la photo ne "s'animent" pas eux-mêmes) : c'est un habillage cinéma (caméra + étalonnage) autour d'une photo fixe.
+
+## Évolution possible (payante, optionnelle)
+
+Si un budget devient acceptable plus tard, un vrai mouvement généré par IA (ex. via l'API de fal.ai, `queue.fal.run`, modèles Kling image-to-video) peut être ajouté comme option "Pro" à côté du rendu gratuit, sans toucher à l'existant.
 
 ## Personnalisation
 
-- **Styles cinématographiques** : objet `STYLES` dans `worker.js` — chaque entrée a un `prompt` en anglais (les modèles vidéo répondent mieux en anglais) envoyé à fal.ai, et un `label`/`desc` en français affichés à l'écran.
-- **Modèles** : objet `MODELS` — `standard` et `pro` pointent vers deux variantes Kling. Modifiable via les variables d'env `FAL_MODEL_STANDARD` / `FAL_MODEL_PRO` sans toucher au code.
-- **Limites** : `MAX_UPLOAD_BYTES` (12 Mo) et `ALLOWED_TYPES` (JPEG/PNG/WebP) en tête de `worker.js`.
-
-## Coûts
-
-Chaque génération vidéo est facturée par fal.ai (variable selon modèle/durée — voir leur tableau de prix). Il n'y a pas de garde-fou de coût dans le code : à ajouter (quota par IP, limite quotidienne, etc.) avant une mise en production ouverte au public.
+- **Styles** : objets `STYLES` (métadonnées affichées) et `STYLE_RECIPES` (paramètres d'animation/filtre côté navigateur) dans `worker.js`.
+- **Résolution** : toggle HD/Full HD dans l'interface, correspond aux dimensions du canvas de rendu.

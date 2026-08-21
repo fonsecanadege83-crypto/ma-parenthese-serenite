@@ -2,20 +2,9 @@ name = "cine-scenes-ia"
 main = "worker.js"
 compatibility_date = "2026-08-01"
 
-# Stockage des photos uploadées et des vidéos générées
+# Stockage des vidéos partagées dans la galerie publique (optionnel)
 [[r2_buckets]]
 binding = "MEDIA"
 bucket_name = "cine-scenes-media"
 
-# Métadonnées des générations (jobs) + index de la galerie
-[[kv_namespaces]]
-binding = "JOBS_KV"
-id = "8f78ee9ad4cb436e8bccb19b194f13dd"
-
-[vars]
-# Modèle fal.ai utilisé par défaut pour le rendu "standard" (voir MODELS dans worker.js)
-FAL_MODEL_STANDARD = "fal-ai/kling-video/v1.6/standard/image-to-video"
-FAL_MODEL_PRO = "fal-ai/kling-video/v1.6/pro/image-to-video"
-
-# Secret à définir hors dépôt :
-#   wrangler secret put FAL_KEY
+# Aucune clé ni secret requis : le rendu vidéo se fait dans le navigateur.
