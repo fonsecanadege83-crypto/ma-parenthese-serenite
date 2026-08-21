@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+@theme {
+  --font-serif: 'Fraunces', serif;
+  --font-sans: 'Inter', sans-serif;
+
+  --color-bg: #F3F0E6;
+  --color-bg-soft: #EAE6D8;
+  --color-card: #FFFFFF;
+  --color-card-soft: #FAF8F2;
+
+  --color-sage: #7C9070;
+  --color-sage-light: #96A98A;
+  --color-sage-dark: #5E7053;
+
+  --color-lavender: #9A93C9;
+  --color-lavender-light: #B4AFDA;
+
+  --color-clay: #C98F6E;
+
+  --color-ink: #2E3328;
+  --color-ink-soft: #5B6153;
+  --color-ink-faint: #8B917F;
+
+  --color-line: rgba(46, 51, 40, 0.09);
+}
+
+html {
+  background: var(--color-bg);
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--color-bg);
+  color: var(--color-ink);
+  min-height: 100vh;
+  -webkit-tap-highlight-color: transparent;
+}
+
+* {
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar {
+  display: none;
+}
+
+.font-serif {
+  font-family: var(--font-serif);
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up {
+  animation: fade-up 0.35s ease both;
+}
+
+@keyframes breathe-in {
+  from { transform: scale(0.55); }
+  to { transform: scale(1); }
+}
+@keyframes breathe-out {
+  from { transform: scale(1); }
+  to { transform: scale(0.55); }
+}
