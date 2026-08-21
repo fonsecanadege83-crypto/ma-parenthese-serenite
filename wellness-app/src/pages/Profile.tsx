@@ -3,10 +3,17 @@ import { PageHeader } from '../components/Layout';
 import { Card } from '../components/Card';
 import { useApp } from '../context/AppContext';
 import { lastNDays, formatFrShort } from '../lib/date';
-import { MOOD_META } from '../lib/types';
+import { MOOD_META, type ThemeMode } from '../lib/types';
+
+const THEME_OPTIONS: { mode: ThemeMode; label: string; icon: string }[] = [
+  { mode: 'light', label: 'Clair', icon: '☀️' },
+  { mode: 'dark', label: 'Sombre', icon: '🌙' },
+  { mode: 'system', label: 'Système', icon: '⚙️' },
+];
 
 export function Profile() {
-  const { profile, streak, totalMinutes, sessions, journal, moods, resetAll } = useApp();
+  const { profile, streak, totalMinutes, sessions, journal, moods, theme, setTheme, resetAll } =
+    useApp();
   const [confirmReset, setConfirmReset] = useState(false);
 
   const days = lastNDays(14);
@@ -75,6 +82,26 @@ export function Profile() {
             {journal.length} entrée{journal.length !== 1 ? 's' : ''} enregistrée
             {journal.length !== 1 ? 's' : ''}
           </p>
+        </Card>
+
+        <Card className="mt-4">
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-sage-dark">Apparence</p>
+          <div className="mt-3 flex gap-2">
+            {THEME_OPTIONS.map((opt) => (
+              <button
+                key={opt.mode}
+                onClick={() => setTheme(opt.mode)}
+                className={`flex flex-1 flex-col items-center gap-1 rounded-2xl border py-3 text-[11px] font-medium transition-colors ${
+                  theme === opt.mode
+                    ? 'border-sage bg-sage/10 text-sage-dark'
+                    : 'border-line text-ink-faint'
+                }`}
+              >
+                <span className="text-lg">{opt.icon}</span>
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </Card>
 
         <button

@@ -25,8 +25,55 @@
   --color-line: rgba(46, 51, 40, 0.09);
 }
 
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-bg: #191C15;
+    --color-bg-soft: #21251B;
+    --color-card: #242820;
+    --color-card-soft: #2A2E24;
+
+    --color-sage: #8FAA80;
+    --color-sage-light: #A8C098;
+    --color-sage-dark: #6E8A61;
+
+    --color-lavender: #B3ADDE;
+    --color-lavender-light: #C7C2E8;
+
+    --color-clay: #D9A17E;
+
+    --color-ink: #EDEADC;
+    --color-ink-soft: #B7B3A2;
+    --color-ink-faint: #837F6E;
+
+    --color-line: rgba(237, 234, 220, 0.10);
+  }
+}
+
+:root[data-theme="dark"] {
+  --color-bg: #191C15;
+  --color-bg-soft: #21251B;
+  --color-card: #242820;
+  --color-card-soft: #2A2E24;
+
+  --color-sage: #8FAA80;
+  --color-sage-light: #A8C098;
+  --color-sage-dark: #6E8A61;
+
+  --color-lavender: #B3ADDE;
+  --color-lavender-light: #C7C2E8;
+
+  --color-clay: #D9A17E;
+
+  --color-ink: #EDEADC;
+  --color-ink-soft: #B7B3A2;
+  --color-ink-faint: #837F6E;
+
+  --color-line: rgba(237, 234, 220, 0.10);
+}
+
 html {
   background: var(--color-bg);
+  transition: background 0.2s ease;
 }
 
 body {
@@ -35,6 +82,7 @@ body {
   color: var(--color-ink);
   min-height: 100vh;
   -webkit-tap-highlight-color: transparent;
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
 * {

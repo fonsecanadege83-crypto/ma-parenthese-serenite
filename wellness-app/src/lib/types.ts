@@ -24,6 +24,26 @@ export interface Profile {
   createdAt: string; // ISO date
 }
 
+export interface Habit {
+  id: string;
+  label: string;
+  icon: string;
+  custom?: boolean;
+}
+
+/** Map of date key -> ids of habits completed that day. */
+export type HabitLog = Record<string, string[]>;
+
+export type ThemeMode = 'light' | 'dark' | 'system';
+
+export const DEFAULT_HABITS: Habit[] = [
+  { id: 'water', label: "Boire de l'eau régulièrement", icon: '💧' },
+  { id: 'move', label: 'Bouger 10 minutes', icon: '🚶' },
+  { id: 'outside', label: "Prendre l'air dehors", icon: '🌳' },
+  { id: 'screens', label: 'Limiter les écrans le soir', icon: '📵' },
+  { id: 'sleep', label: 'Se coucher à une heure raisonnable', icon: '🌙' },
+];
+
 export const MOOD_META: Record<MoodValue, { emoji: string; label: string; score: number }> = {
   great: { emoji: '😊', label: 'Radieux', score: 5 },
   good: { emoji: '🙂', label: 'Bien', score: 4 },

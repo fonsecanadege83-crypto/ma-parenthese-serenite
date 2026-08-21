@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { PageHeader } from '../components/Layout';
 import { Card } from '../components/Card';
 import { useApp } from '../context/AppContext';
@@ -130,6 +131,15 @@ export function Meditate() {
             )}
           </div>
         </Card>
+
+        <Link
+          to="/sons"
+          className="mt-4 flex items-center gap-3 rounded-2xl border border-dashed border-line px-4 py-3.5 text-[13px] text-ink-soft transition-colors active:bg-bg-soft"
+        >
+          <span className="text-lg">🎵</span>
+          Choisir un fond sonore pour ta séance
+          <span className="ml-auto text-ink-faint">›</span>
+        </Link>
 
         {done && (
           <Card className="mt-4 bg-sage/10">

@@ -6,7 +6,7 @@ import { quoteOfDay } from '../lib/quotes';
 import { MOOD_META, MOOD_ORDER, type MoodValue } from '../lib/types';
 
 export function Home() {
-  const { profile, todayMood, setTodayMood, streak, journal, sessions } = useApp();
+  const { profile, todayMood, setTodayMood, streak, journal, habits, todayHabitIds } = useApp();
   const today = todayKey();
   const dateLabel = formatFrDate(today);
   const quote = quoteOfDay(today);
@@ -29,9 +29,10 @@ export function Home() {
         <p className="mt-2 font-serif text-lg italic leading-relaxed">"{quote}"</p>
       </Card>
 
-      <div className="mt-5 grid grid-cols-2 gap-3">
+      <div className="mt-5 grid grid-cols-3 gap-3">
         <StatTile label="Série en cours" value={`${streak} j`} icon="🔥" />
-        <StatTile label="Entrées journal" value={`${journal.length}`} icon="📔" />
+        <StatTile label="Journal" value={`${journal.length}`} icon="📔" />
+        <StatTile label="Habitudes" value={`${todayHabitIds.length}/${habits.length}`} icon="🌱" />
       </div>
 
       <p className="mb-2 mt-6 px-1 text-[11px] font-semibold uppercase tracking-widest text-sage-dark">
@@ -54,7 +55,31 @@ export function Home() {
           to="/journal"
           emoji="📔"
           title="Journal de gratitude"
-          subtitle={sessions.length ? `${sessions.length} séance(s) accomplie(s)` : 'Note ce qui compte aujourd’hui'}
+          subtitle="Note ce qui compte aujourd’hui"
+        />
+      </div>
+
+      <p className="mb-2 mt-6 px-1 text-[11px] font-semibold uppercase tracking-widest text-sage-dark">
+        Explorer
+      </p>
+      <div className="flex flex-col gap-3">
+        <QuickLink
+          to="/habitudes"
+          emoji="🌱"
+          title="Habitudes"
+          subtitle="Suis tes petites routines bien-être au quotidien"
+        />
+        <QuickLink
+          to="/sons"
+          emoji="🎵"
+          title="Sons ambiants"
+          subtitle="Pluie, océan, vent ou feu de camp pour t'apaiser"
+        />
+        <QuickLink
+          to="/ressources"
+          emoji="💡"
+          title="Ressources"
+          subtitle="Des conseils courts sur le sommeil, le stress et plus"
         />
       </div>
     </div>

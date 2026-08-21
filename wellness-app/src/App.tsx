@@ -7,6 +7,9 @@ import { Breathe } from './pages/Breathe';
 import { Meditate } from './pages/Meditate';
 import { Journal } from './pages/Journal';
 import { Profile } from './pages/Profile';
+import { Sounds } from './pages/Sounds';
+import { Habits } from './pages/Habits';
+import { Resources } from './pages/Resources';
 
 function AppShell() {
   const { isOnboarded } = useApp();
@@ -20,6 +23,9 @@ function AppShell() {
         <Route path="/respirer" element={<Breathe />} />
         <Route path="/mediter" element={<Meditate />} />
         <Route path="/journal" element={<Journal />} />
+        <Route path="/sons" element={<Sounds />} />
+        <Route path="/habitudes" element={<Habits />} />
+        <Route path="/ressources" element={<Resources />} />
         <Route path="/profil" element={<Profile />} />
       </Routes>
     </Layout>
