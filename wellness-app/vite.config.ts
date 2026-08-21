@@ -4,6 +4,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: '/ma-parenthese-serenite/',
   plugins: [
     react(),
     VitePWA({
@@ -15,7 +16,8 @@ export default defineConfig({
         description:
           'Respiration guidée, méditation, journal de gratitude, humeur et habitudes bien-être — tout en local, sans compte.',
         lang: 'fr',
-        start_url: '/',
+        start_url: '/ma-parenthese-serenite/',
+        scope: '/ma-parenthese-serenite/',
         display: 'standalone',
         background_color: '#F3F0E6',
         theme_color: '#F3F0E6',
