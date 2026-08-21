@@ -14,6 +14,10 @@ import { Sos } from './pages/Sos';
 import { Stretch } from './pages/Stretch';
 import { Weekly } from './pages/Weekly';
 import { Visualize } from './pages/Visualize';
+import { Sleep } from './pages/Sleep';
+import { Emotions } from './pages/Emotions';
+import { Letter } from './pages/Letter';
+import { Affirmations } from './pages/Affirmations';
 
 function AppShell() {
   const { isOnboarded } = useApp();
@@ -34,6 +38,10 @@ function AppShell() {
         <Route path="/etirements" element={<Stretch />} />
         <Route path="/bilan" element={<Weekly />} />
         <Route path="/visualisations" element={<Visualize />} />
+        <Route path="/sommeil" element={<Sleep />} />
+        <Route path="/emotions" element={<Emotions />} />
+        <Route path="/lettre" element={<Letter />} />
+        <Route path="/affirmations" element={<Affirmations />} />
         <Route path="/profil" element={<Profile />} />
       </Routes>
     </Layout>

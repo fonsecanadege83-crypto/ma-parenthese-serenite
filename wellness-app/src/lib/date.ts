@@ -51,3 +51,12 @@ export function lastNDays(n: number): string[] {
 }
 
 export { daysBetween };
+
+/** Hours slept between a bedtime and a wake time (HH:MM), assuming wake is the next morning if earlier than bedtime. */
+export function sleepDurationHours(bedtime: string, wakeTime: string): number {
+  const [bh, bm] = bedtime.split(':').map(Number);
+  const [wh, wm] = wakeTime.split(':').map(Number);
+  let minutes = wh * 60 + wm - (bh * 60 + bm);
+  if (minutes <= 0) minutes += 24 * 60;
+  return Math.round((minutes / 60) * 10) / 10;
+}

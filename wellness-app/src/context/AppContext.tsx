@@ -2,13 +2,16 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { loadValue, saveValue } from '../lib/storage';
 import { todayKey, computeStreak } from '../lib/date';
 import type {
+  EmotionEntry,
   Habit,
   HabitLog,
   JournalEntry,
+  Letter,
   MoodEntry,
   MoodValue,
   Profile,
   SessionLog,
+  SleepEntry,
   ThemeMode,
 } from '../lib/types';
 import { DEFAULT_HABITS } from '../lib/types';
@@ -21,6 +24,10 @@ interface AppState {
   habits: Habit[];
   habitLog: HabitLog;
   theme: ThemeMode;
+  sleepEntries: SleepEntry[];
+  emotions: EmotionEntry[];
+  letters: Letter[];
+  favoriteAffirmations: string[];
 }
 
 interface AppContextValue extends AppState {
@@ -38,6 +45,10 @@ interface AppContextValue extends AppState {
   removeHabit: (habitId: string) => void;
   habitStreak: (habitId: string) => number;
   setTheme: (mode: ThemeMode) => void;
+  addSleepEntry: (entry: Omit<SleepEntry, 'id' | 'date'>) => void;
+  addEmotionEntry: (entry: Omit<EmotionEntry, 'id' | 'date'>) => void;
+  addLetter: (text: string, unlockDate: string) => void;
+  toggleFavoriteAffirmation: (text: string) => void;
   resetAll: () => void;
 }
 
@@ -60,6 +71,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [habits, setHabits] = useState<Habit[]>(() => loadValue('habits', DEFAULT_HABITS));
   const [habitLog, setHabitLog] = useState<HabitLog>(() => loadValue('habitLog', {}));
   const [theme, setThemeState] = useState<ThemeMode>(() => loadValue('theme', 'system'));
+  const [sleepEntries, setSleepEntries] = useState<SleepEntry[]>(() => loadValue('sleepEntries', []));
+  const [emotions, setEmotions] = useState<EmotionEntry[]>(() => loadValue('emotions', []));
+  const [letters, setLetters] = useState<Letter[]>(() => loadValue('letters', []));
+  const [favoriteAffirmations, setFavoriteAffirmations] = useState<string[]>(() =>
+    loadValue('favoriteAffirmations', []),
+  );
 
   useEffect(() => saveValue('profile', profile), [profile]);
   useEffect(() => saveValue('moods', moods), [moods]);
@@ -67,6 +84,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => saveValue('sessions', sessions), [sessions]);
   useEffect(() => saveValue('habits', habits), [habits]);
   useEffect(() => saveValue('habitLog', habitLog), [habitLog]);
+  useEffect(() => saveValue('sleepEntries', sleepEntries), [sleepEntries]);
+  useEffect(() => saveValue('emotions', emotions), [emotions]);
+  useEffect(() => saveValue('letters', letters), [letters]);
+  useEffect(() => saveValue('favoriteAffirmations', favoriteAffirmations), [favoriteAffirmations]);
   useEffect(() => {
     saveValue('theme', theme);
     applyTheme(theme);
@@ -103,6 +124,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     habits,
     habitLog,
     theme,
+    sleepEntries,
+    emotions,
+    letters,
+    favoriteAffirmations,
     isOnboarded: profile !== null,
     todayMood,
     streak,
@@ -159,6 +184,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return computeStreak(days);
     },
     setTheme: (mode: ThemeMode) => setThemeState(mode),
+    addSleepEntry: (entry) => {
+      const t = todayKey();
+      setSleepEntries((prev) => [...prev, { id: crypto.randomUUID(), date: t, ...entry }]);
+    },
+    addEmotionEntry: (entry) => {
+      const t = todayKey();
+      setEmotions((prev) => [...prev, { id: crypto.randomUUID(), date: t, ...entry }]);
+    },
+    addLetter: (text, unlockDate) => {
+      setLetters((prev) => [
+        ...prev,
+        { id: crypto.randomUUID(), createdAt: new Date().toISOString(), unlockDate, text },
+      ]);
+    },
+    toggleFavoriteAffirmation: (text: string) => {
+      setFavoriteAffirmations((prev) =>
+        prev.includes(text) ? prev.filter((t) => t !== text) : [...prev, text],
+      );
+    },
     resetAll: () => {
       setProfile(null);
       setMoods([]);
@@ -166,6 +210,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setSessions([]);
       setHabits(DEFAULT_HABITS);
       setHabitLog({});
+      setSleepEntries([]);
+      setEmotions([]);
+      setLetters([]);
+      setFavoriteAffirmations([]);
     },
   };
 

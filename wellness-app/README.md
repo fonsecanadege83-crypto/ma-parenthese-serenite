@@ -16,6 +16,10 @@ Application web de bien-être mental au quotidien, construite avec React, TypeSc
 - **SOS / Ancrage rapide** — technique de mise à la terre 5-4-3-2-1 interactive pour un coup de stress, accessible en un geste depuis l'accueil.
 - **Étirements** — séquence guidée de 6 mouvements doux avec minuteur auto-progressif.
 - **Bilan de la semaine** — synthèse des 7 derniers jours : humeur dominante, répartition, séances, taux d'habitudes accomplies.
+- **Sommeil** — routine du coucher, journal de sommeil (heures, qualité) et moyenne calculée.
+- **Roue des émotions** — exploration fine des émotions par catégorie (joie, tristesse, colère, peur, surprise, dégoût) avec sous-émotions et contexte.
+- **Lettre à moi-même** — écriture d'une lettre scellée jusqu'à une date future choisie (1 mois à 1 an).
+- **Affirmations** — cartes d'affirmations positives à faire défiler, avec favoris et partage.
 - **Profil** — statistiques (série, séances, minutes), historique d'humeur sur 14 jours, mode clair/sombre/système, export/import de sauvegarde (JSON), réinitialisation des données.
 - **Partage** — pensée du jour et entrées de journal partageables via le partage natif (ou copie presse-papiers en repli).
 - **Installable (PWA)** — ajoutable à l'écran d'accueil, fonctionne hors-ligne après un premier chargement.

@@ -36,6 +36,30 @@ export type HabitLog = Record<string, string[]>;
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 
+export interface SleepEntry {
+  id: string;
+  date: string; // YYYY-MM-DD, the morning this entry logs waking up on
+  bedtime: string; // HH:MM
+  wakeTime: string; // HH:MM
+  quality: number; // 1-5
+  note?: string;
+}
+
+export interface EmotionEntry {
+  id: string;
+  date: string; // YYYY-MM-DD
+  categoryId: string;
+  emotion: string;
+  note?: string;
+}
+
+export interface Letter {
+  id: string;
+  createdAt: string; // ISO date
+  unlockDate: string; // YYYY-MM-DD
+  text: string;
+}
+
 export const DEFAULT_HABITS: Habit[] = [
   { id: 'water', label: "Boire de l'eau régulièrement", icon: '💧' },
   { id: 'move', label: 'Bouger 10 minutes', icon: '🚶' },

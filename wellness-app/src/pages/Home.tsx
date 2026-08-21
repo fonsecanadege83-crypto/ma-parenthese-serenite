@@ -92,12 +92,6 @@ export function Home() {
           subtitle="Une évasion mentale racontée à voix haute"
         />
         <QuickLink
-          to="/journal"
-          emoji="📔"
-          title="Journal de gratitude"
-          subtitle="Note ce qui compte aujourd’hui"
-        />
-        <QuickLink
           to="/etirements"
           emoji="🤸"
           title="Étirements"
@@ -106,7 +100,31 @@ export function Home() {
       </div>
 
       <p className="mb-2 mt-6 px-1 text-[11px] font-semibold uppercase tracking-widest text-sage-dark">
-        Explorer
+        Explorer mes émotions
+      </p>
+      <div className="flex flex-col gap-3">
+        <QuickLink
+          to="/journal"
+          emoji="📔"
+          title="Journal de gratitude"
+          subtitle="Note ce qui compte aujourd’hui"
+        />
+        <QuickLink
+          to="/emotions"
+          emoji="🎭"
+          title="Roue des émotions"
+          subtitle="Nomme ce que tu ressens, plus précisément"
+        />
+        <QuickLink
+          to="/bilan"
+          emoji="📊"
+          title="Bilan de la semaine"
+          subtitle="Ta synthèse des 7 derniers jours"
+        />
+      </div>
+
+      <p className="mb-2 mt-6 px-1 text-[11px] font-semibold uppercase tracking-widest text-sage-dark">
+        Vie quotidienne
       </p>
       <div className="flex flex-col gap-3">
         <QuickLink
@@ -116,22 +134,40 @@ export function Home() {
           subtitle="Suis tes petites routines bien-être au quotidien"
         />
         <QuickLink
+          to="/sommeil"
+          emoji="😴"
+          title="Sommeil"
+          subtitle="Routine du coucher et suivi de tes nuits"
+        />
+        <QuickLink
+          to="/lettre"
+          emoji="✉️"
+          title="Lettre à moi-même"
+          subtitle="Écris à la personne que tu seras plus tard"
+        />
+      </div>
+
+      <p className="mb-2 mt-6 px-1 text-[11px] font-semibold uppercase tracking-widest text-sage-dark">
+        Explorer
+      </p>
+      <div className="flex flex-col gap-3">
+        <QuickLink
           to="/sons"
           emoji="🎵"
           title="Sons ambiants"
           subtitle="Pluie, océan, vent ou feu de camp pour t'apaiser"
         />
         <QuickLink
+          to="/affirmations"
+          emoji="💬"
+          title="Affirmations"
+          subtitle="Une phrase à te répéter, à ton rythme"
+        />
+        <QuickLink
           to="/ressources"
           emoji="💡"
           title="Ressources"
           subtitle="Des conseils courts sur le sommeil, le stress et plus"
-        />
-        <QuickLink
-          to="/bilan"
-          emoji="📊"
-          title="Bilan de la semaine"
-          subtitle="Ta synthèse des 7 derniers jours"
         />
       </div>
     </div>
