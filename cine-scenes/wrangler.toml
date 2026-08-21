@@ -1,0 +1,19 @@
+name = "cine-scenes-ia"
+main = "worker.js"
+compatibility_date = "2026-08-01"
+
+# Photos, scènes générées et galerie publique
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "cine-scenes-media"
+
+# Suivi des générations de scène en cours (mode Avatar IA uniquement)
+[[kv_namespaces]]
+binding = "JOBS_KV"
+id = "a63d5ac998e84e6b8b443e1b9a7f42f8"
+
+# Secrets à définir hors dépôt, uniquement si vous activez le mode Avatar IA :
+#   wrangler secret put FAL_KEY     (clé fal.ai, obligatoire pour ce mode)
+#   wrangler secret put APP_PIN     (optionnel : code d'accès pour protéger le mode payant)
+#
+# Sans FAL_KEY, l'app fonctionne quand même : seul le mode gratuit "Photo unique" est utilisable.
